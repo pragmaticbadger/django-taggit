@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.fields.related import ManyToManyRel
 from django.db.models.query_utils import QueryWrapper
+from django.template.defaultfilters import slugify
 
 from taggit.forms import TagField
 from taggit.models import Tag, TaggedItem
@@ -122,7 +123,10 @@ class _TaggableManager(models.Manager):
     def add(self, *tags):
         for tag in tags:
             if not isinstance(tag, Tag):
-                tag, _ = Tag.objects.get_or_create(name=tag)
+                try:
+                    tag = Tag.objects.get(slug=slugify(tag))
+                except Tag.DoesNotExist:
+                    tag = Tag.objects.create(name=tag)
             TaggedItem.objects.get_or_create(object_id=self.object_id,
                 content_type=ContentType.objects.get_for_model(self.model), tag=tag)
 
@@ -135,7 +139,7 @@ class _TaggableManager(models.Manager):
     def remove(self, *tags):
         TaggedItem.objects.filter(object_id=self.object_id,
             content_type=ContentType.objects.get_for_model(self.model)).filter(
-            tag__name__in=tags).delete()
+            tag__slug__in=[slugify(t) for t in tags]).delete()
 
     @require_instance_manager
     def clear(self):

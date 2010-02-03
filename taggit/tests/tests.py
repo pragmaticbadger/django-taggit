@@ -97,6 +97,15 @@ class SimilarityByTagTestCase(BaseTaggingTest):
         self.assertEqual(similar_objs, [pear, watermelon])
         self.assertEqual(map(lambda x: x.similar_tags, similar_objs), [3, 2])
 
+class DuplicateSlugTestCase(BaseTaggingTest):
+    """Test that an IntegrityError is not raised if two tags have the same slug."""
+    def test_duplicate_slug(self):
+        apple = Food.objects.create(name="apple")
+        apple.tags.add("so tasty", "so-tasty")
+        self.assert_tags_equal(apple.tags.all(), ['so tasty'])
+        apple.tags.remove('so tasty')
+        self.assert_tags_equal(apple.tags.all(), [])
+
 class TagReuseTestCase(BaseTaggingTest):
     def test_tag_reuse(self):
         apple = Food.objects.create(name="apple")
