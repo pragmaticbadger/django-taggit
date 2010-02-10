@@ -1,8 +1,11 @@
+from __future__ import with_statement
+from contextlib import contextmanager
+
 from django.test import TestCase
 
 from taggit.models import Tag
 from taggit.tests.forms import FoodForm
-from taggit.tests.models import Food, Pet
+from taggit.tests.models import Food, Pet, HousePet
 
 
 class BaseTaggingTest(TestCase):
@@ -12,7 +15,17 @@ class BaseTaggingTest(TestCase):
             got.sort()
             tags.sort()
         self.assertEqual(got, tags)
-
+    
+    @contextmanager
+    def assert_raises(self, exc_type):
+        try:
+            yield
+        except Exception, e:
+            self.assert_(type(e) is exc_type, "%s didn't match expected "
+                "exception type %s" % (e, exc_type))
+        else:
+            self.fail("No exception raised, expected %s" % exc_type)
+    
 
 class AddTagTestCase(BaseTaggingTest):
     def test_add_tag(self):
@@ -44,6 +57,10 @@ class AddTagTestCase(BaseTaggingTest):
         
         apple.delete()
         self.assert_tags_equal(Food.tags.all(), ["green"])
+        
+        f = Food()
+        with self.assert_raises(ValueError):
+            f.tags.all()
 
 
 class LookupByTagTestCase(BaseTaggingTest):
@@ -65,6 +82,14 @@ class LookupByTagTestCase(BaseTaggingTest):
         tag = Tag.objects.get(name="woof")
         self.assertEqual(list(Pet.objects.filter(tags__in=[tag])), [dog])
 
+        cat = HousePet.objects.create(name="cat", trained=True)
+        cat.tags.add("fuzzy")
+
+        self.assertEqual(
+            map(lambda o: o.pk, Pet.objects.filter(tags__in=["fuzzy"])),
+            [kitty.pk, cat.pk]
+        )
+
 
 class TaggableFormTestCase(BaseTaggingTest):
     def test_form(self):
@@ -80,6 +105,11 @@ class TaggableFormTestCase(BaseTaggingTest):
         apple = Food.objects.get(name='apple')
         self.assert_tags_equal(apple.tags.all(), ['green', 'red', 'yummy', 'delicious'])
         self.assertEqual(Food.objects.count(), 1)
+        
+        f = FoodForm({"name": "raspberry"})
+        raspberry = f.save()
+        self.assert_tags_equal(raspberry.tags.all(), [])
+
 
 class SimilarityByTagTestCase(BaseTaggingTest):
     def test_similarity_by_tag(self):
@@ -96,6 +126,7 @@ class SimilarityByTagTestCase(BaseTaggingTest):
         similar_objs = apple.tags.similar_objects()
         self.assertEqual(similar_objs, [pear, watermelon])
         self.assertEqual(map(lambda x: x.similar_tags, similar_objs), [3, 2])
+
 
 class TagReuseTestCase(BaseTaggingTest):
     def test_tag_reuse(self):
