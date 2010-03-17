@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from django.test import TestCase
 
 from taggit.models import Tag
-from taggit.tests.forms import FoodForm
+from taggit.tests.forms import FoodForm, CustomFoodForm
 from taggit.tests.models import Food, Pet, HousePet
 
 
@@ -113,6 +113,14 @@ class TaggableFormTestCase(BaseTaggingTest):
         f = FoodForm({"name": "raspberry"})
         raspberry = f.save()
         self.assert_tags_equal(raspberry.tags.all(), [])
+    
+    def test_custom_parser(self):
+        self.assertEqual(CustomFoodForm.base_fields.keys(), ['name', 'tags'])
+
+        f = CustomFoodForm({'name': 'apple', 'tags': 'green red yummy'})
+        f.save()
+        apple = Food.objects.get(name='apple')
+        self.assert_tags_equal(apple.tags.all(), ['green', 'red', 'yummy'])
 
 
 class SimilarityByTagTestCase(BaseTaggingTest):
