@@ -13,16 +13,30 @@ class Tag(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.pk and not self.slug:
-            self.slug = slug = slugify(self.name)
-            i = 0
-            while True:
-                try:
-                    return super(Tag, self).save(*args, **kwargs)
-                except IntegrityError:
-                    i += 1
-                    self.slug = "%s_%d" % (slug, i)
-        else:
-            return super(Tag, self).save(*args, **kwargs)
+            self.slug = self.generate_slug()
+        
+        return super(Tag, self).save(*args, **kwargs)
+    
+    def generate_slug(self):
+        """
+        Without breaking a transaction, find the next best available slug.
+        
+        This will try the ``slugify``-ed version first. If that is not
+        available, then start appending on an incrementing integer until
+        an available slug is found.
+        """
+        original_slug = slug = slugify(self.name)
+        i = 0
+        
+        while True:
+            try:
+                found = Tag.objects.get(slug=slug)
+                i += 1
+                slug = "%s_%s" % (original_slug, i)
+            except Tag.DoesNotExist:
+                break
+        
+        return slug
 
 
 class TaggedItem(models.Model):

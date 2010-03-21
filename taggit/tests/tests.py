@@ -64,7 +64,8 @@ class AddTagTestCase(BaseTaggingTest):
     
     def test_unique_slug(self):
         apple = Food.objects.create(name="apple")
-        apple.tags.add("Red", "red")
+        apple.tags.add("Red", "red", "rEd")
+        self.assertEqual([tag.slug for tag in Tag.objects.all().order_by('slug')], [u'red', u'red_1', u'red_2'])
 
 
 class LookupByTagTestCase(BaseTaggingTest):
